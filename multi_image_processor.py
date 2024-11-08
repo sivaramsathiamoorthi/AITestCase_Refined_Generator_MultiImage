@@ -26,12 +26,12 @@ class MultiImageProcessor:
                 with ZipFile(uploaded_file, 'r') as zip_ref:
                     zip_ref.extractall(temp_dir)
 
-                # Get all image files in the extracted contents
-                image_files = [
-                    os.path.join(temp_dir, f) 
-                    for f in os.listdir(temp_dir) 
-                    if f.lower().endswith(('.png', '.jpg', '.jpeg'))
-                ]
+                # Recursively find all image files in the extracted contents
+                image_files = []
+                for root, _, files in os.walk(temp_dir):
+                    for file in files:
+                        if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                            image_files.append(os.path.join(root, file))
                 
                 if image_files:
                     # Dropdown for selecting an image from the extracted files
@@ -51,4 +51,3 @@ class MultiImageProcessor:
                     st.warning("The uploaded ZIP file contains no valid image files.")
         else:
             st.info("Please upload a ZIP file containing images to proceed.")
-
