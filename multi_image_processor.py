@@ -4,6 +4,7 @@ from image_info_generator import ImageInfoGenerator
 from zipfile import ZipFile
 import tempfile
 import os
+from streamlit_image_select import image_select  # Importing image_select
 
 class MultiImageProcessor:
     def __init__(self, api_key=None):
@@ -26,18 +27,16 @@ class MultiImageProcessor:
                     for file in files:
                         if file.lower().endswith(('.png', '.jpg', '.jpeg')):
                             image_files.append(os.path.join(root, file))
-                
-                if image_files:
-                    # Display images in a grid layout
-                    selected_image_path = None
-                    cols = st.columns(3)  # Adjust number of columns as needed
-                    for i, image_path in enumerate(image_files):
-                        with cols[i % 3]:  # Display images in grid format
-                            if st.button("Select", key=image_path):
-                                selected_image_path = image_path
-                            st.image(image_path, use_column_width=True)
 
-                    # Show selected image for further processing
+                if image_files:
+                    # Use image_select to display images in a tile format
+                    selected_image_path = image_select(
+                        label="Select an image:",
+                        images=image_files,
+                        use_container_width=True
+                    )
+
+                    # Show the selected image and provide question input
                     if selected_image_path:
                         image = Image.open(selected_image_path)
                         st.image(image, caption="Selected Image", use_column_width=True)
