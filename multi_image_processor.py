@@ -4,7 +4,7 @@ from image_info_generator import ImageInfoGenerator
 from zipfile import ZipFile
 import tempfile
 import os
-from streamlit_image_select import image_select  # Importing image_select
+from streamlit_image_select import image_select
 
 class MultiImageProcessor:
     def __init__(self, api_key=None):
@@ -22,17 +22,25 @@ class MultiImageProcessor:
                 with ZipFile(uploaded_file, 'r') as zip_ref:
                     zip_ref.extractall(temp_dir)
 
-                image_files = []
+                # Prepare JPEG-converted images
+                jpeg_images = []
                 for root, _, files in os.walk(temp_dir):
                     for file in files:
                         if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                            image_files.append(os.path.join(root, file))
+                            image_path = os.path.join(root, file)
+                            image = Image.open(image_path)
+                            
+                            # Convert to JPEG format
+                            jpeg_image_path = os.path.join(temp_dir, f"{os.path.splitext(file)[0]}.jpg")
+                            rgb_image = image.convert("RGB")  # Ensure image is in RGB mode for JPEG
+                            rgb_image.save(jpeg_image_path, format="JPEG")
+                            jpeg_images.append(jpeg_image_path)
 
-                if image_files:
+                if jpeg_images:
                     # Use image_select to display images in a tile format
                     selected_image_path = image_select(
                         label="Select an image:",
-                        images=image_files,
+                        images=jpeg_images,
                         use_container_width=True
                     )
 
