@@ -2,3 +2,7 @@ langchain
 Pillow
 streamlit
 streamlit_image_select
+langchain_community
+langchain_openai
+langchain_core
+
