@@ -36,8 +36,4 @@ else:
         if option == "Multi-Image":
             MultiImageProcessor(api_key=st.session_state["api_key"]).run()
 
-        # Display response only for TestCase Generator
-        if "response" in st.session_state and st.session_state.response:
-            st.text_area("Response:", st.session_state.response, height=300, key="displayed_response")
-            if st.button("Copy Response"):
-                st.code(st.session_state.response, language="")
+        # Remove the redundant response box code
