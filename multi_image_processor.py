@@ -1,5 +1,5 @@
 import streamlit as st
-from PIL import Image, ImageGrab
+from PIL import Image
 from image_info_generator import ImageInfoGenerator
 from zipfile import ZipFile
 import tempfile
@@ -20,77 +20,64 @@ class MultiImageProcessor:
         self.image_generator = ImageInfoGenerator(api_key=self.api_key)
 
     def run(self):
-        # Initialize session state for response and separate lists for ZIP and clipboard images
+        # Session state for response persistence
         if "response" not in st.session_state:
             st.session_state.response = ""
-        if "zip_images" not in st.session_state:
-            st.session_state.zip_images = []
-        if "clipboard_images" not in st.session_state:
-            st.session_state.clipboard_images = []
 
-        # Button to check clipboard for images
-        if st.button("Check Clipboard for Image", help="Click to paste an image from the clipboard"):
-            self.check_for_pasted_image()
-
-        # File upload for ZIP containing images
         uploaded_file = st.file_uploader("Upload a ZIP file containing images", type=["zip"])
         if uploaded_file:
-            self.extract_images_from_zip(uploaded_file)
+            with tempfile.TemporaryDirectory() as temp_dir:
+                with ZipFile(uploaded_file, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
 
-        # Combine ZIP and clipboard images without duplicates for display in the grid
-        combined_images = st.session_state.zip_images + st.session_state.clipboard_images
-        if combined_images:
-            selected_image = image_select(
-                label="Select an image:",
-                images=combined_images,
-                use_container_width=True
-            )
+                # Prepare JPEG-converted images
+                jpeg_images = []
+                for root, _, files in os.walk(temp_dir):
+                    for file in files:
+                        if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                            image_path = os.path.join(root, file)
+                            image = Image.open(image_path)
+                            jpeg_image_path = os.path.join(temp_dir, f"{os.path.splitext(file)[0]}.jpg")
+                            rgb_image = image.convert("RGB")
+                            rgb_image.save(jpeg_image_path, format="JPEG")
+                            jpeg_images.append(jpeg_image_path)
 
-            # Show the selected image and provide question input
-            if selected_image:
-                image = selected_image
-                st.image(image, caption="Selected Image", use_column_width=True)
+                if jpeg_images:
+                    selected_image_path = image_select(
+                        label="Select an image:",
+                        images=jpeg_images,
+                        use_container_width=True
+                    )
 
-                question = st.text_area("Enter your question about the selected image:", height=100)
-                if st.button("Generate Multi-Image Response"):
-                    description = self.image_generator.generate_image_description(image, question)
-                    st.session_state.response = description or "No response generated. Please check your question and try again."
+                    if selected_image_path:
+                        image = Image.open(selected_image_path)
+                        st.image(image, caption="Selected Image", use_column_width=True)
 
-        # Display the response in an enhanced format and add the Copy to Clipboard button
+                        question = st.text_area("Enter your question about the selected image:", height=100)
+                        if st.button("Generate Multi-Image Response"):
+                            description = self.image_generator.generate_image_description(image, question)
+                            st.session_state.response = description or "No response generated. Please check your question and try again."
+
+                else:
+                    st.warning("The uploaded ZIP file contains no valid image files.")
+        else:
+            st.info("Please upload a ZIP file containing images to proceed.")
+
+        # Display the response in an enhanced format
         if st.session_state.response:
             st.markdown("### Generated Response:")
 
-            # Enhanced formatting of response with JavaScript Copy to Clipboard button
-            st.markdown("""
-                <button onclick="navigator.clipboard.writeText(document.getElementById('generated-response').innerText)">
-                    Copy to Clipboard
-                </button>
-                <style>
-                    button {
-                        background-color: #4CAF50; /* Green */
-                        border: none;
-                        color: white;
-                        padding: 10px 20px;
-                        text-align: center;
-                        text-decoration: none;
-                        display: inline-block;
-                        font-size: 14px;
-                        margin: 4px 2px;
-                        cursor: pointer;
-                        border-radius: 4px;
-                    }
-                </style>
-            """, unsafe_allow_html=True)
-
-            # Format the response and include it in a scrollable div with an ID for copying
+            # Format the response with custom styling, background color, and scroll
             formatted_response = self.format_response(st.session_state.response)
-            st.markdown(f"""
-                <div id="generated-response" style="
-                    background-color: #f0f4f8; padding: 20px; border-radius: 8px; border: 1px solid #ddd;
-                    font-family: Arial, sans-serif; color: #333; max-height: 300px; overflow-y: scroll;">
-                    {formatted_response}
-                </div>
-            """, unsafe_allow_html=True)
+            st.markdown(formatted_response, unsafe_allow_html=True)
+
+            # Copy to Clipboard Button
+            if st.button("Copy to Clipboard"):
+                st.write(
+                    "<script>navigator.clipboard.writeText(`" + st.session_state.response + "`);</script>",
+                    unsafe_allow_html=True
+                )
+                st.success("Response copied to clipboard!")
 
             # Download buttons for PDF and Word document
             col1, col2 = st.columns(2)
@@ -111,41 +98,6 @@ class MultiImageProcessor:
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
 
-    def extract_images_from_zip(self, uploaded_file):
-        """Extracts images from a ZIP file and stores them as JPEG in zip_images session state."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Extract files to a temporary directory
-            with ZipFile(uploaded_file, 'r') as zip_ref:
-                zip_ref.extractall(temp_dir)
-
-            # Convert and add JPEG images to zip_images session state
-            st.session_state.zip_images.clear()  # Clear any previous images from zip_images
-            for root, _, files in os.walk(temp_dir):
-                for file in files:
-                    if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                        image_path = os.path.join(root, file)
-                        image = Image.open(image_path)
-                        st.session_state.zip_images.append(self.convert_to_jpeg(image))
-
-    def check_for_pasted_image(self):
-        """Check for an image in the clipboard and add it to clipboard_images if found."""
-        try:
-            image = ImageGrab.grabclipboard()
-            if isinstance(image, Image.Image):
-                jpeg_image = self.convert_to_jpeg(image)
-                if jpeg_image not in st.session_state.clipboard_images:  # Avoid duplicates
-                    st.session_state.clipboard_images.append(jpeg_image)
-                st.experimental_rerun()  # Rerun to update image display
-        except Exception:
-            pass  # Suppress clipboard errors quietly
-
-    def convert_to_jpeg(self, image):
-        """Convert an image to JPEG format and return it as a PIL Image."""
-        output = BytesIO()
-        image.convert("RGB").save(output, format="JPEG")
-        output.seek(0)
-        return Image.open(output)
-
     def format_response(self, text):
         # Custom styling with background color, padding, and scrollable div
         formatted_text = ""
@@ -159,8 +111,16 @@ class MultiImageProcessor:
                 formatted_text += f"<p>{line}</p>"
 
         return f"""
-            <div style="background-color: #f0f4f8; padding: 20px; border-radius: 8px; border: 1px solid #ddd;
-                        font-family: Arial, sans-serif; color: #333; max-height: 300px; overflow-y: scroll;">
+            <div style="
+                background-color: #f0f4f8;
+                padding: 20px;
+                border-radius: 8px;
+                border: 1px solid #ddd;
+                font-family: Arial, sans-serif;
+                color: #333;
+                max-height: 300px;
+                overflow-y: scroll;
+            ">
                 {formatted_text}
             </div>
         """
