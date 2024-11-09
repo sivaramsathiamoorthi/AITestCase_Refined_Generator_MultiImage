@@ -56,19 +56,41 @@ class MultiImageProcessor:
                     description = self.image_generator.generate_image_description(image, question)
                     st.session_state.response = description or "No response generated. Please check your question and try again."
 
-        # Display the response in an enhanced format
+        # Display the response in an enhanced format and add the Copy to Clipboard button
         if st.session_state.response:
             st.markdown("### Generated Response:")
-            formatted_response = self.format_response(st.session_state.response)
-            st.markdown(formatted_response, unsafe_allow_html=True)
 
-            # Copy to Clipboard Button
-            if st.button("Copy to Clipboard"):
-                st.write(
-                    "<script>navigator.clipboard.writeText(`" + st.session_state.response + "`);</script>",
-                    unsafe_allow_html=True
-                )
-                st.success("Response copied to clipboard!")
+            # Enhanced formatting of response with JavaScript Copy to Clipboard button
+            st.markdown("""
+                <button onclick="navigator.clipboard.writeText(document.getElementById('generated-response').innerText)">
+                    Copy to Clipboard
+                </button>
+                <style>
+                    button {
+                        background-color: #4CAF50; /* Green */
+                        border: none;
+                        color: white;
+                        padding: 10px 20px;
+                        text-align: center;
+                        text-decoration: none;
+                        display: inline-block;
+                        font-size: 14px;
+                        margin: 4px 2px;
+                        cursor: pointer;
+                        border-radius: 4px;
+                    }
+                </style>
+            """, unsafe_allow_html=True)
+
+            # Format the response and include it in a scrollable div with an ID for copying
+            formatted_response = self.format_response(st.session_state.response)
+            st.markdown(f"""
+                <div id="generated-response" style="
+                    background-color: #f0f4f8; padding: 20px; border-radius: 8px; border: 1px solid #ddd;
+                    font-family: Arial, sans-serif; color: #333; max-height: 300px; overflow-y: scroll;">
+                    {formatted_response}
+                </div>
+            """, unsafe_allow_html=True)
 
             # Download buttons for PDF and Word document
             col1, col2 = st.columns(2)
