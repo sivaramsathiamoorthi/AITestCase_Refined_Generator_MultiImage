@@ -17,12 +17,7 @@ class WebTestCaseGenerator:
 
     def create_prompt(self):
         template = (
-            "You are a highly skilled business analyst. {question}. Based on your expertise in analyzing data, "
-            "interpreting business requirements, and understanding complex processes, examine the provided context {context}. "
-            "Deliver a detailed analysis that outlines key insights, identifies potential risks, and highlights any "
-            "opportunities for improvement. Provide a structured response, including specific recommendations or steps for "
-            "optimization where applicable. Present your findings in a clear and actionable format to support data-driven "
-            "decision-making."
+            "You are an expert website analyst. {question}. Review the provided website content {context} and answer the user's question directly. Provide clear and relevant information as requested."
         )
         return PromptTemplate(template=template, input_variables=["question", "context"])
 
