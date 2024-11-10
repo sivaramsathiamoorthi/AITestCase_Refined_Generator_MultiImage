@@ -7,4 +7,4 @@ langchain_openai
 langchain_core
 python_docx
 reportlab
-
+beautifulsoup4
