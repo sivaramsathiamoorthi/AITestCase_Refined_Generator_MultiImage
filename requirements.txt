@@ -8,3 +8,4 @@ langchain_core
 python_docx
 reportlab
 beautifulsoup4
+faiss-cpu
